@@ -1,17 +1,33 @@
 import nodemailer from 'nodemailer';
+import dns from 'node:dns';
 
 function getTransportConfig() {
+  const smtpPort = Number(process.env.SMTP_PORT || 587);
+  const smtpSecure =
+    process.env.SMTP_SECURE != null
+      ? process.env.SMTP_SECURE === 'true'
+      : smtpPort === 465;
+
   if (process.env.SMTP_HOST) {
     return {
       host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT || 587),
-      secure: process.env.SMTP_SECURE === 'true',
+      port: smtpPort,
+      secure: smtpSecure,
       auth: process.env.SMTP_USER
         ? {
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASS,
           }
         : undefined,
+      tls: {
+        servername: process.env.SMTP_HOST,
+      },
+      // Many cloud hosts expose IPv4 egress but not IPv6, and Gmail may resolve
+      // to an IPv6 address first. Default to IPv4 unless explicitly overridden.
+      lookup(hostname, options, callback) {
+        const family = Number(process.env.SMTP_FAMILY || 4);
+        return dns.lookup(hostname, { ...options, family, all: false }, callback);
+      },
     };
   }
 
