@@ -13,12 +13,18 @@ export const initializeSocket = (server) => {
     'http://localhost:3000',
     'http://localhost:5173',
     'https://code-sense-mu.vercel.app',
-    process.env.FRONTEND_URL
-  ].filter(Boolean);
+    'https://code-sense-six.vercel.app',
+    ...(process.env.FRONTEND_URL || '')
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean)
+  ];
+
+  const uniqueAllowedOrigins = [...new Set(allowedOrigins)];
 
   io = new Server(server, {
     cors: {
-      origin: allowedOrigins,
+      origin: uniqueAllowedOrigins,
       methods: ['GET', 'POST'],
       credentials: true
     },

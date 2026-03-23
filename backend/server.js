@@ -41,7 +41,7 @@ try {
   console.error('❌ Failed to load socket module:', error.message);
 }
 
-dotenv.config({ path: '../.env' });
+dotenv.config();
 initializeJWTSecret();
 await connectDB();
 
@@ -54,17 +54,30 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
   'https://code-sense-mu.vercel.app',
-  process.env.FRONTEND_URL
-].filter(Boolean);
+  'https://code-sense-six.vercel.app',
+  ...(process.env.FRONTEND_URL || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+];
 
-app.use(cors({
-  origin: allowedOrigins,
+const uniqueAllowedOrigins = [...new Set(allowedOrigins)];
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin || uniqueAllowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`Origin ${origin} not allowed by CORS`));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
-}));
+};
 
-app.options('*', cors());
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 
 // Logging
@@ -154,5 +167,5 @@ httpServer.listen(PORT, '0.0.0.0', () => {
   console.log('\n🚀 CodeSense Server Started');
   console.log(`📡 Port: ${PORT}`);
   console.log(`🔗 URL: http://localhost:${PORT}`);
-  console.log(`🌐 CORS: ${allowedOrigins.length} origins allowed\n`);
+  console.log(`🌐 CORS: ${uniqueAllowedOrigins.length} origins allowed\n`);
 });
