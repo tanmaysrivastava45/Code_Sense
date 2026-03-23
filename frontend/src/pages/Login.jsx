@@ -155,12 +155,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { apiClient } from '../config/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { Code, Mail, Lock, ArrowRight, Sparkles } from 'lucide-react';
+import ResendVerification from '../components/ResendVerification';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showResendVerification, setShowResendVerification] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
 
@@ -168,12 +170,14 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setShowResendVerification(false);
 
     try {
       const response = await apiClient.auth.login(email, password);
       
       if (response.error) {
         setError(response.error);
+        setShowResendVerification(Boolean(response.requiresVerification));
         return;
       }
 
@@ -242,6 +246,8 @@ const Login = () => {
               {error}
             </div>
           )}
+
+          {showResendVerification && <ResendVerification email={email} />}
 
           <form onSubmit={handleLogin} className="space-y-5">
             <div>

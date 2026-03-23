@@ -1,13 +1,37 @@
 import { useState } from 'react';
 import { Mail, CheckCircle } from 'lucide-react';
+import { apiClient } from '../config/supabaseClient';
 
 const ResendVerification = ({ email }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
   const handleResendVerification = async () => {
-    // TODO: Implement resend verification with backend
-    setSuccess(true);
-    setTimeout(() => setSuccess(false), 5000);
+    if (!email) {
+      setError('Enter your email first.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setSuccess(false);
+
+    try {
+      const response = await apiClient.auth.resendVerification(email);
+
+      if (response.error) {
+        setError(response.error);
+        return;
+      }
+
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 5000);
+    } catch (requestError) {
+      setError(requestError.message || 'Failed to resend verification email');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

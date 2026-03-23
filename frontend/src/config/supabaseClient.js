@@ -22,6 +22,24 @@ export const apiClient = {
       return response.json();
     },
 
+    verifyEmail: async (token) => {
+      const response = await fetch(`${API_BASE_URL}/auth/verify-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      return response.json();
+    },
+
+    resendVerification: async (email) => {
+      const response = await fetch(`${API_BASE_URL}/auth/resend-verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      return response.json();
+    },
+
     getProfile: async (token) => {
       const response = await fetch(`${API_BASE_URL}/auth/profile`, {
         method: 'GET',

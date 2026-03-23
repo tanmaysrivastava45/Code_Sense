@@ -8,6 +8,7 @@ import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import CollaborationRoom from './pages/CollaborationRoom';
+import VerifyEmail from './pages/VerifyEmail';
 
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuth();
@@ -24,6 +25,7 @@ const AppContent = () => {
   const hideNavbar = location.pathname === '/' || 
                      location.pathname === '/register' || 
                      location.pathname === '/login' ||
+                     location.pathname === '/verify-email' ||
                      location.pathname === '/forgot-password' ||
                      location.pathname === '/reset-password';
 
@@ -46,6 +48,12 @@ const AppContent = () => {
         <Route path="/login" element={
           <PublicRoute>
             <Login />
+          </PublicRoute>
+        } />
+
+        <Route path="/verify-email" element={
+          <PublicRoute>
+            <VerifyEmail />
           </PublicRoute>
         } />
         

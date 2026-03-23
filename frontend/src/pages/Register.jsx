@@ -214,7 +214,11 @@ const Register = () => {
       }
 
       setSuccess(true);
-      alert('Registration successful! Please login with your credentials.');
+      alert(
+        response.emailSent
+          ? 'Registration successful! Please verify your email before logging in.'
+          : 'Registration successful, but the verification email could not be sent automatically.'
+      );
       setTimeout(() => navigate('/login'), 2000);
     } catch (error) {
       setError(error.message || 'Registration failed');
@@ -276,7 +280,7 @@ const Register = () => {
 
           {success && (
             <div className="mb-6 p-4 bg-green-500/20 border border-green-500/50 rounded-lg text-green-300 text-sm">
-              Registration successful! Redirecting to login...
+              Registration successful! Check your inbox for the verification email.
             </div>
           )}
 
