@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, ArrowLeft, CheckCircle } from 'lucide-react';
+import { apiClient } from '../config/supabaseClient';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -15,11 +16,16 @@ const ForgotPassword = () => {
     setSuccess(false);
 
     try {
-      // TODO: Implement password reset with backend
-      // For now, just show a message
+      const response = await apiClient.auth.forgotPassword(email);
+
+      if (response.error) {
+        setError(response.error);
+        return;
+      }
+
       setSuccess(true);
     } catch (error) {
-      setError(error.message);
+      setError(error.message || 'Failed to send reset email');
     } finally {
       setLoading(false);
     }

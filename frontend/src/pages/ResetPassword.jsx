@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Lock, CheckCircle, AlertCircle } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Lock, CheckCircle } from 'lucide-react';
+import { apiClient } from '../config/supabaseClient';
 
 const ResetPassword = () => {
   const [password, setPassword] = useState('');
@@ -9,6 +10,8 @@ const ResetPassword = () => {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
 
   const handleUpdatePassword = async (e) => {
     e.preventDefault();
@@ -24,10 +27,21 @@ const ResetPassword = () => {
       return;
     }
 
+    if (!token) {
+      setError('Reset token is missing or invalid');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // TODO: Implement password reset with backend
+      const response = await apiClient.auth.resetPassword(token, password);
+
+      if (response.error) {
+        setError(response.error);
+        return;
+      }
+
       setSuccess(true);
       setTimeout(() => navigate('/login'), 3000);
     } catch (error) {

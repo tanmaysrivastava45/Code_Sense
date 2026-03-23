@@ -71,11 +71,16 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
 import { createSession } from '../utils/sessionManager.js';
-import { isEmailConfigured, sendVerificationEmail } from '../utils/emailService.js';
+import {
+  isEmailConfigured,
+  sendPasswordResetEmail,
+  sendVerificationEmail,
+} from '../utils/emailService.js';
 dotenv.config();
 
 const SALT_ROUNDS = 10;
 const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 
 function buildVerificationToken() {
   return crypto.randomBytes(32).toString('hex');
@@ -84,6 +89,11 @@ function buildVerificationToken() {
 function buildVerificationUrl(token) {
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   return `${frontendUrl.replace(/\/$/, '')}/verify-email?token=${token}`;
+}
+
+function buildResetPasswordUrl(token) {
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  return `${frontendUrl.replace(/\/$/, '')}/reset-password?token=${token}`;
 }
 
 async function issueVerificationToken(user) {
@@ -104,6 +114,13 @@ async function sendVerificationEmailToUser(user) {
     name: user.name,
     verificationUrl: buildVerificationUrl(token),
   });
+}
+
+async function issuePasswordResetToken(user) {
+  user.passwordResetToken = buildVerificationToken();
+  user.passwordResetExpires = new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS);
+  await user.save();
+  return user.passwordResetToken;
 }
 
 // REGISTER
@@ -275,11 +292,81 @@ export const resendVerification = async (req, res) => {
   }
 };
 
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    if (!isEmailConfigured()) {
+      return res.status(500).json({ error: 'Email service is not configured' });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      return res.json({
+        message: 'If an account with that email exists, a reset link has been sent.',
+      });
+    }
+
+    const resetToken = await issuePasswordResetToken(user);
+    await sendPasswordResetEmail({
+      email: user.email,
+      name: user.name,
+      resetUrl: buildResetPasswordUrl(resetToken),
+    });
+
+    res.json({
+      message: 'If an account with that email exists, a reset link has been sent.',
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ error: 'Failed to send password reset email' });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({ error: 'Token and password are required' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const user = await User.findOne({
+      passwordResetToken: token,
+      passwordResetExpires: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid or expired reset link' });
+    }
+
+    user.password = await bcrypt.hash(password, SALT_ROUNDS);
+    user.passwordResetToken = null;
+    user.passwordResetExpires = null;
+    await user.save();
+
+    res.json({ message: 'Password reset successful' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ error: 'Failed to reset password' });
+  }
+};
+
 // GET PROFILE
 export const getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select(
-      '-password -emailVerificationToken -emailVerificationExpires'
+      '-password -emailVerificationToken -emailVerificationExpires -passwordResetToken -passwordResetExpires'
     );
     if (!user) return res.status(404).json({ error: 'User not found' });
 

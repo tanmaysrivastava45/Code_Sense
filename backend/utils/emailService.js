@@ -86,3 +86,48 @@ export async function sendVerificationEmail({ email, name, verificationUrl }) {
     `,
   });
 }
+
+export async function sendPasswordResetEmail({ email, name, resetUrl }) {
+  const transporter = createTransporter();
+  const fromEmail =
+    process.env.SMTP_FROM_EMAIL ||
+    process.env.EMAIL_FROM ||
+    process.env.EMAIL_USER;
+
+  if (!fromEmail) {
+    throw new Error('Sender email is missing');
+  }
+
+  await transporter.sendMail({
+    from: fromEmail,
+    to: email,
+    subject: 'Reset your CodeSense password',
+    text: [
+      `Hi ${name || 'there'},`,
+      '',
+      'We received a request to reset your CodeSense password.',
+      'Open this link to choose a new password:',
+      resetUrl,
+      '',
+      'This link expires in 1 hour.',
+    ].join('\n'),
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #0f172a;">
+        <h2>Reset your password</h2>
+        <p>Hi ${name || 'there'},</p>
+        <p>We received a request to reset your CodeSense password.</p>
+        <p>
+          <a
+            href="${resetUrl}"
+            style="display: inline-block; padding: 12px 20px; background: #0891b2; color: #ffffff; text-decoration: none; border-radius: 8px;"
+          >
+            Reset Password
+          </a>
+        </p>
+        <p>If the button does not work, copy and paste this link into your browser:</p>
+        <p>${resetUrl}</p>
+        <p>This link expires in 1 hour.</p>
+      </div>
+    `,
+  });
+}

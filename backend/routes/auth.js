@@ -6,6 +6,8 @@ import {
   getProfile,
   verifyEmail,
   resendVerification,
+  forgotPassword,
+  resetPassword,
 } from '../controllers/authController.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 
@@ -15,6 +17,8 @@ router.post('/register', register);
 router.post('/login', login);
 router.post('/verify-email', verifyEmail);
 router.post('/resend-verification', resendVerification);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 router.post('/logout', logout);
 router.get('/profile', authenticateToken, getProfile);
 
