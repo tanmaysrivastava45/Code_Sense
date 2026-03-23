@@ -9,6 +9,21 @@ const genAI = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY
 });
 
+const serializeAnalysis = (analysisDoc) => {
+  const analysis = analysisDoc.toObject ? analysisDoc.toObject() : analysisDoc;
+
+  return {
+    ...analysis,
+    id: analysis._id?.toString?.() || analysis.id,
+    created_at: analysis.createdAt,
+    updated_at: analysis.updatedAt,
+    problem_name: analysis.problemName,
+    syntax_errors: analysis.syntaxErrors,
+    time_complexity: analysis.timeComplexity,
+    space_complexity: analysis.spaceComplexity,
+  };
+};
+
 // Generate problem name from code
 const generateProblemName = async (code, language) => {
   try {
@@ -294,7 +309,7 @@ export const getHistory = async (req, res) => {
       .skip(Number(offset))
       .limit(Number(limit));
 
-    res.json({ history });
+    res.json({ history: history.map(serializeAnalysis) });
   } catch (error) {
     console.error('Get history error:', error);
     res.status(500).json({ error: 'Failed to fetch history' });
@@ -342,13 +357,27 @@ export const getAnalysisStats = async (req, res) => {
 
     // await connectDB();
 
-    const total = await Analysis.countDocuments({ userId });
-    const last = await Analysis.findOne({ userId }).sort({ createdAt: -1 });
+    const analyses = await Analysis.find({ userId }).sort({ createdAt: -1 });
+    const total = analyses.length;
+    const last = analyses[0];
+    const byType = analyses.reduce((counts, analysis) => {
+      if (analysis.timeComplexity) counts['time-complexity'] += 1;
+      if (analysis.spaceComplexity) counts['space-complexity'] += 1;
+      if (analysis.explanation) counts.understand += 1;
+      if (analysis.improvements) counts.improvements += 1;
+      return counts;
+    }, {
+      'time-complexity': 0,
+      'space-complexity': 0,
+      understand: 0,
+      improvements: 0,
+    });
 
     res.json({
       stats: {
         total,
         lastAnalysis: last?.createdAt || null,
+        byType,
       },
     });
 

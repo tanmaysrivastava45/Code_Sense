@@ -11,6 +11,20 @@ import {
 } from 'lucide-react';
 import CollaborationHub from '../components/CollaborationHub';
 
+const normalizeHistoryItem = (item) => ({
+  ...item,
+  id: item.id || item._id,
+  createdAt: item.createdAt || item.created_at,
+  problemName: item.problemName || item.problem_name || 'Code Analysis',
+  syntaxErrors: item.syntaxErrors || item.syntax_errors || '',
+  timeComplexity: item.timeComplexity || item.time_complexity || '',
+  spaceComplexity: item.spaceComplexity || item.space_complexity || '',
+  explanation: item.explanation || '',
+  improvements: item.improvements || '',
+  language: item.language || 'javascript',
+  code: item.code || ''
+});
+
 const Home = () => {
   const { user, token, loading: authLoading, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -63,7 +77,7 @@ const Home = () => {
           'Content-Type': 'application/json'
         }
       });
-      setHistory(response.data.history || []);
+      setHistory((response.data.history || []).map(normalizeHistoryItem));
     } catch (error) {
       console.error('Load history error:', error);
       if (error.response?.status === 401) {
@@ -206,12 +220,12 @@ const Home = () => {
   const loadFromHistory = (item) => {
     setCode(item.code);
     setResults({
-      problemName: item.problem_name,
-      syntaxErrors: item.syntax_errors || '',
-      timeComplexity: item.time_complexity || '',
-      spaceComplexity: item.space_complexity || '',
-      explanation: item.explanation || '',
-      improvements: item.improvements || ''
+      problemName: item.problemName,
+      syntaxErrors: item.syntaxErrors,
+      timeComplexity: item.timeComplexity,
+      spaceComplexity: item.spaceComplexity,
+      explanation: item.explanation,
+      improvements: item.improvements
     });
     setLanguage(item.language);
     setShowHistory(false);
@@ -482,7 +496,7 @@ const Home = () => {
                     >
                       <div className="flex items-start justify-between mb-1">
                         <p className="text-cyan-300 text-sm font-semibold line-clamp-1">
-                          {item.problem_name}
+                          {item.problemName}
                         </p>
                         <button
                           onClick={(e) => {
@@ -495,7 +509,7 @@ const Home = () => {
                         </button>
                       </div>
                       <p className="text-xs text-gray-400">
-                        {new Date(item.created_at).toLocaleDateString()}
+                        {new Date(item.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                   ))}
@@ -526,9 +540,9 @@ const Home = () => {
                     onClick={() => loadFromHistory(item)}
                     className="bg-white/5 rounded-lg p-3 border border-cyan-500/20"
                   >
-                    <p className="text-cyan-300 text-sm font-semibold">{item.problem_name}</p>
+                    <p className="text-cyan-300 text-sm font-semibold">{item.problemName}</p>
                     <p className="text-xs text-gray-400 mt-1">
-                      {new Date(item.created_at).toLocaleDateString()}
+                      {new Date(item.createdAt).toLocaleDateString()}
                     </p>
                   </div>
                 ))}

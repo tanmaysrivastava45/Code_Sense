@@ -7,13 +7,25 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 const History = () => {
-  const { user, session } = useAuth();
+  const { user, token } = useAuth();
   const navigate = useNavigate();
   const [history, setHistory] = useState([]);
-  const [groupedHistory, setGroupedHistory] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+
+  const normalizeHistoryItem = (item) => ({
+    ...item,
+    id: item.id || item._id,
+    createdAt: item.createdAt || item.created_at,
+    problemName: item.problemName || item.problem_name || 'Code Analysis',
+    syntaxErrors: item.syntaxErrors || item.syntax_errors || '',
+    timeComplexity: item.timeComplexity || item.time_complexity || '',
+    spaceComplexity: item.spaceComplexity || item.space_complexity || '',
+    explanation: item.explanation || '',
+    improvements: item.improvements || '',
+    code: item.code || ''
+  });
 
   useEffect(() => {
     if (!user) {
@@ -21,19 +33,30 @@ const History = () => {
       return;
     }
 
+    if (!token) return;
+
     fetchHistory();
     fetchStats();
-  }, [user, navigate, filter]);
+  }, [user, token, navigate, filter]);
 
   const fetchHistory = async () => {
     try {
       const API_URL = import.meta.env.VITE_API_URL;
-      const params = filter !== 'all' ? `?analysisType=${filter}` : '';
-      const response = await axios.get(`${API_URL}/analysis/history${params}`, {
-        headers: { Authorization: `Bearer ${session.access_token}` }
+      const response = await axios.get(`${API_URL}/analysis/history`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      setHistory(response.data.history);
-      setGroupedHistory(response.data.groupedHistory);
+      const normalizedHistory = (response.data.history || []).map(normalizeHistoryItem);
+      setHistory(
+        filter === 'all'
+          ? normalizedHistory
+          : normalizedHistory.filter((item) => {
+              if (filter === 'time-complexity') return Boolean(item.timeComplexity);
+              if (filter === 'space-complexity') return Boolean(item.spaceComplexity);
+              if (filter === 'understand') return Boolean(item.explanation);
+              if (filter === 'improvements') return Boolean(item.improvements);
+              return true;
+            })
+      );
     } catch (error) {
       console.error('Fetch history error:', error);
     } finally {
@@ -45,7 +68,7 @@ const History = () => {
     try {
       const API_URL = import.meta.env.VITE_API_URL;
       const response = await axios.get(`${API_URL}/analysis/stats`, {
-        headers: { Authorization: `Bearer ${session.access_token}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
       setStats(response.data.stats);
     } catch (error) {
@@ -59,7 +82,7 @@ const History = () => {
     try {
       const API_URL = import.meta.env.VITE_API_URL;
       await axios.delete(`${API_URL}/analysis/${id}`, {
-        headers: { Authorization: `Bearer ${session.access_token}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
       setHistory(history.filter(item => item.id !== id));
       fetchStats();
@@ -80,15 +103,13 @@ const History = () => {
     });
   };
 
-  const getAnalysisTypeLabel = (type) => {
-    const labels = {
-      'time-complexity': 'Time Complexity',
-      'space-complexity': 'Space Complexity',
-      'understand': 'Code Understanding',
-      'improvements': 'Code Improvements'
-    };
-    return labels[type] || type;
-  };
+  const getSections = (analysis) => [
+    { label: 'Syntax Errors', value: analysis.syntaxErrors },
+    { label: 'Time Complexity', value: analysis.timeComplexity },
+    { label: 'Space Complexity', value: analysis.spaceComplexity },
+    { label: 'Code Understanding', value: analysis.explanation },
+    { label: 'Improvements', value: analysis.improvements }
+  ].filter((section) => section.value);
 
   if (loading) {
     return (
@@ -138,7 +159,7 @@ const History = () => {
                 : 'glass-card text-gray-300 hover:bg-white/10'
             }`}
           >
-            Time ({stats?.byType['time-complexity'] || 0})
+            Time ({stats?.byType?.['time-complexity'] || 0})
           </button>
           <button
             onClick={() => setFilter('space-complexity')}
@@ -148,7 +169,7 @@ const History = () => {
                 : 'glass-card text-gray-300 hover:bg-white/10'
             }`}
           >
-            Space ({stats?.byType['space-complexity'] || 0})
+            Space ({stats?.byType?.['space-complexity'] || 0})
           </button>
           <button
             onClick={() => setFilter('understand')}
@@ -158,7 +179,7 @@ const History = () => {
                 : 'glass-card text-gray-300 hover:bg-white/10'
             }`}
           >
-            Understanding ({stats?.byType['understand'] || 0})
+            Understanding ({stats?.byType?.['understand'] || 0})
           </button>
           <button
             onClick={() => setFilter('improvements')}
@@ -168,7 +189,7 @@ const History = () => {
                 : 'glass-card text-gray-300 hover:bg-white/10'
             }`}
           >
-            Improvements ({stats?.byType['improvements'] || 0})
+            Improvements ({stats?.byType?.['improvements'] || 0})
           </button>
         </div>
 
@@ -186,10 +207,7 @@ const History = () => {
                   <div className="flex items-center space-x-3">
                     <Calendar className="w-5 h-5 text-primary-400" />
                     <span className="text-sm text-gray-300">
-                      {formatDate(analysis.created_at)}
-                    </span>
-                    <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs font-medium">
-                      {getAnalysisTypeLabel(analysis.analysis_type)}
+                      {formatDate(analysis.createdAt)}
                     </span>
                   </div>
                   <button
@@ -202,10 +220,10 @@ const History = () => {
 
                 <div className="space-y-4">
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-400 mb-2">Code</h4>
+                    <h4 className="text-sm font-semibold text-gray-400 mb-2">{analysis.problemName}</h4>
                     <div className="bg-gray-900 rounded-lg overflow-hidden">
                       <SyntaxHighlighter
-                        language="javascript"
+                        language={analysis.language || 'javascript'}
                         style={vscDarkPlus}
                         customStyle={{ margin: 0, maxHeight: '200px' }}
                       >
@@ -214,14 +232,16 @@ const History = () => {
                     </div>
                   </div>
 
-                  <div>
-                    <h4 className="text-sm font-semibold text-gray-400 mb-2">
-                      {getAnalysisTypeLabel(analysis.analysis_type)}
-                    </h4>
-                    <p className="text-sm text-gray-300 bg-gray-900/50 p-4 rounded-lg whitespace-pre-wrap">
-                      {analysis.result}
-                    </p>
-                  </div>
+                  {getSections(analysis).map((section) => (
+                    <div key={section.label}>
+                      <h4 className="text-sm font-semibold text-gray-400 mb-2">
+                        {section.label}
+                      </h4>
+                      <p className="text-sm text-gray-300 bg-gray-900/50 p-4 rounded-lg whitespace-pre-wrap">
+                        {section.value}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
