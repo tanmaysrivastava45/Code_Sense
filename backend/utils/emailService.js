@@ -1,12 +1,18 @@
 import nodemailer from 'nodemailer';
 import dns from 'node:dns';
 
+function getIpv4Lookup() {
+  return (hostname, options, callback) =>
+    dns.lookup(hostname, { ...options, family: 4, all: false }, callback);
+}
+
 function getTransportConfig() {
   const smtpPort = Number(process.env.SMTP_PORT || 587);
   const smtpSecure =
     process.env.SMTP_SECURE != null
       ? process.env.SMTP_SECURE === 'true'
       : smtpPort === 465;
+  const lookup = getIpv4Lookup();
 
   if (process.env.SMTP_HOST) {
     return {
@@ -22,12 +28,8 @@ function getTransportConfig() {
       tls: {
         servername: process.env.SMTP_HOST,
       },
-      // Many cloud hosts expose IPv4 egress but not IPv6, and Gmail may resolve
-      // to an IPv6 address first. Default to IPv4 unless explicitly overridden.
-      lookup(hostname, options, callback) {
-        const family = Number(process.env.SMTP_FAMILY || 4);
-        return dns.lookup(hostname, { ...options, family, all: false }, callback);
-      },
+      // Force SMTP resolution through IPv4 to avoid IPv6-only routing issues.
+      lookup,
     };
   }
 
@@ -38,6 +40,7 @@ function getTransportConfig() {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
+      lookup,
     };
   }
 
