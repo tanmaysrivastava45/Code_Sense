@@ -16,7 +16,7 @@ import jsPDF from 'jspdf';
 const CollaborationRoom = () => {
   const { roomId } = useParams();
   const navigate = useNavigate();
-  const { user, session } = useAuth();
+  const { user, token, loading: authLoading } = useAuth();
   const { joinRoom, leaveRoom, currentRoom, isInRoom, notifyAnalysisStart } = useCollaboration();
   
   const [code, setCode] = useState('');
@@ -42,7 +42,11 @@ const CollaborationRoom = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    if (!user || !session) {
+    if (authLoading) {
+      return;
+    }
+
+    if (!user || !token) {
       navigate('/register');
       return;
     }
@@ -61,14 +65,18 @@ const CollaborationRoom = () => {
         leaveRoom();
       }
     };
-  }, [roomId, user, session]);
+  }, [roomId, user, token, authLoading]);
 
   const loadRoomAndJoin = async () => {
+    if (!token) {
+      return;
+    }
+
     try {
       setLoading(true);
       const API_URL = import.meta.env.VITE_API_URL;
       const response = await axios.get(`${API_URL}/collaboration/rooms/${roomId}`, {
-        headers: { Authorization: `Bearer ${session.access_token}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
       
       const room = response.data.room;
@@ -105,7 +113,7 @@ const CollaborationRoom = () => {
       const response = await axios.post(
         `${API_URL}/analysis/analyze-all`,
         { code, language },
-        { headers: { Authorization: `Bearer ${session.access_token}` } }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       setResults(response.data.results);
@@ -140,7 +148,7 @@ const CollaborationRoom = () => {
       const response = await axios.post(
         `${API_URL}/analysis/analyze`,
         { code, language, analysisType: type },
-        { headers: { Authorization: `Bearer ${session.access_token}` } }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       setResults(prev => ({

@@ -93,9 +93,9 @@
 // export default router;
 
 import express from 'express';
+import mongoose from 'mongoose';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 import { CollaborationRoom } from '../model/CollaborationRoom.js';
-import { v4 as uuidv4 } from 'uuid';
 
 const router = express.Router();
 
@@ -106,7 +106,6 @@ router.post('/rooms/create', authenticateToken, async (req, res) => {
     const userId = req.user.id;
 
     const room = await CollaborationRoom.create({
-      _id: uuidv4(), // optional UUID for external use
       name: name || 'Untitled Room',
       creatorId: userId,
       isPublic: isPublic || false,
@@ -136,6 +135,10 @@ router.get('/rooms', authenticateToken, async (req, res) => {
 router.get('/rooms/:roomId', authenticateToken, async (req, res) => {
   try {
     const { roomId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(roomId)) {
+      return res.status(400).json({ error: 'Invalid room ID' });
+    }
 
     const room = await CollaborationRoom.findById(roomId);
     if (!room) return res.status(404).json({ error: 'Room not found' });

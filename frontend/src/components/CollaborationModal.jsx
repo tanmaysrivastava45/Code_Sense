@@ -3,11 +3,11 @@ import { X, Plus, Users, Copy, Check, Trash2, LogIn } from 'lucide-react';
 import { useCollaboration } from '../context/CollaborationContext';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
-import { v4 as uuidv4 } from 'uuid';
 import {useNavigate} from 'react-router-dom';
+
 const CollaborationModal = ({ isOpen, onClose }) => {
   const { joinRoom } = useCollaboration();
-  const { session } = useAuth();
+  const { token } = useAuth();
   const [activeTab, setActiveTab] = useState('create');
   const [roomName, setRoomName] = useState('');
   const [joinRoomId, setJoinRoomId] = useState('');
@@ -15,6 +15,9 @@ const CollaborationModal = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(null);
   const navigate = useNavigate();
+
+  const getRoomId = (room) => room?._id || room?.id;
+
   useEffect(() => {
     if (isOpen && activeTab === 'my-rooms') {
       loadMyRooms();
@@ -22,10 +25,14 @@ const CollaborationModal = ({ isOpen, onClose }) => {
   }, [isOpen, activeTab]);
 
   const loadMyRooms = async () => {
+    if (!token) {
+      return;
+    }
+
     try {
       const API_URL = import.meta.env.VITE_API_URL;
       const response = await axios.get(`${API_URL}/collaboration/rooms`, {
-        headers: { Authorization: `Bearer ${session.access_token}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
       setMyRooms(response.data.rooms || []);
     } catch (error) {
@@ -38,18 +45,29 @@ const handleCreateRoom = async () => {
     return;
   }
 
+  if (!token) {
+    alert('Please log in again before creating a room.');
+    return;
+  }
+
   setLoading(true);
   try {
-    const API_URL = import.meta.env.VITE_API_URL;
-    const response = await axios.post(
+      const API_URL = import.meta.env.VITE_API_URL;
+      const response = await axios.post(
       `${API_URL}/collaboration/rooms/create`,
       { name: roomName, isPublic: false },
-      { headers: { Authorization: `Bearer ${session.access_token}` } }
+      { headers: { Authorization: `Bearer ${token}` } }
     );
 
     const room = response.data.room;
+    const roomId = getRoomId(room);
+
+    if (!roomId) {
+      throw new Error('Room ID missing from create room response');
+    }
+
     // Navigate to dedicated room page
-    navigate(`/collaborate/${room.id}`);
+    navigate(`/collaborate/${roomId}`);
     onClose();
   } catch (error) {
     console.error('Create room error:', error);
@@ -73,6 +91,11 @@ const handleCreateRoom = async () => {
 
   // In handleJoinExistingRoom function:
   const handleJoinExistingRoom = (roomId, roomName) => {
+    if (!roomId) {
+      alert('This room is missing an ID and cannot be opened.');
+      return;
+    }
+
     // Navigate to dedicated room page
     navigate(`/collaborate/${roomId}`);
     onClose();
@@ -82,12 +105,17 @@ const handleCreateRoom = async () => {
     e.stopPropagation();
     if (!confirm('Delete this room?')) return;
 
+    if (!token) {
+      alert('Please log in again before deleting a room.');
+      return;
+    }
+
     try {
       const API_URL = import.meta.env.VITE_API_URL;
       await axios.delete(`${API_URL}/collaboration/rooms/${roomId}`, {
-        headers: { Authorization: `Bearer ${session.access_token}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
-      setMyRooms(myRooms.filter(r => r.id !== roomId));
+      setMyRooms(myRooms.filter((room) => getRoomId(room) !== roomId));
     } catch (error) {
       console.error('Delete room error:', error);
     }
@@ -231,11 +259,18 @@ const handleCreateRoom = async () => {
                   <p className="text-gray-400">No rooms yet. Create your first room!</p>
                 </div>
               ) : (
-                myRooms.map((room) => (
+                myRooms.map((room) => {
+                  const roomId = getRoomId(room);
+
+                  if (!roomId) {
+                    return null;
+                  }
+
+                  return (
                   <div
-                    key={room.id}
+                    key={roomId}
                     className="bg-white/5 hover:bg-white/10 border border-cyan-500/20 hover:border-cyan-500/40 rounded-xl p-4 transition-all cursor-pointer group"
-                    onClick={() => handleJoinExistingRoom(room.id, room.name)}
+                    onClick={() => handleJoinExistingRoom(roomId, room.name)}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
@@ -243,20 +278,20 @@ const handleCreateRoom = async () => {
                           {room.name}
                         </h4>
                         <p className="text-xs text-gray-400">
-                          Created {new Date(room.created_at).toLocaleDateString()}
+                          Created {new Date(room.createdAt || room.created_at).toLocaleDateString()}
                         </p>
                         <div className="flex items-center gap-2 mt-2">
                           <code className="text-xs text-cyan-400 bg-cyan-500/10 px-2 py-1 rounded">
-                            {room.id.substring(0, 8)}...
+                            {roomId.substring(0, 8)}...
                           </code>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleCopyRoomId(room.id);
+                              handleCopyRoomId(roomId);
                             }}
                             className="p-1 hover:bg-white/10 rounded transition-colors"
                           >
-                            {copied === room.id ? (
+                            {copied === roomId ? (
                               <Check size={14} className="text-green-400" />
                             ) : (
                               <Copy size={14} className="text-gray-400" />
@@ -266,13 +301,13 @@ const handleCreateRoom = async () => {
                       </div>
                       <div className="flex gap-2">
                         <button
-                          onClick={() => handleJoinExistingRoom(room.id, room.name)}
+                          onClick={() => handleJoinExistingRoom(roomId, room.name)}
                           className="px-4 py-2 gradient-primary text-white rounded-lg font-semibold opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           Join
                         </button>
                         <button
-                          onClick={(e) => handleDeleteRoom(room.id, e)}
+                          onClick={(e) => handleDeleteRoom(roomId, e)}
                           className="p-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                         >
                           <Trash2 size={18} className="text-red-400" />
@@ -280,14 +315,14 @@ const handleCreateRoom = async () => {
                       </div>
                     </div>
                   </div>
-                ))
+                )})
               )}
             </div>
           )}
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes scale-in {
           from {
             opacity: 0;

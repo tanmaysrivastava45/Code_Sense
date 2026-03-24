@@ -34,7 +34,7 @@ const CollaborationFAB = () => {
         onClose={() => setShowModal(false)} 
       />
 
-      <style jsx>{`
+      <style>{`
         @keyframes pulse-slow {
           0%, 100% {
             opacity: 1;
