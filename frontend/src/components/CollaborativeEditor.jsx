@@ -4,11 +4,11 @@ import { useCollaboration } from '../context/CollaborationContext';
 
 const CollaborativeEditor = ({ code, setCode, language, setLanguage }) => {
   const { 
-    socket, 
     currentRoom,
+    sharedCode,
+    sharedLanguage,
     sendCodeChange,
     sendLanguageChange,
-    setRoomUsers,
   } = useCollaboration();
   
   const [localCode, setLocalCode] = useState(code);
@@ -16,68 +16,23 @@ const CollaborativeEditor = ({ code, setCode, language, setLanguage }) => {
   const isRemoteChange = useRef(false);
   const debounceTimer = useRef(null);
 
-  // Initialize local code
   useEffect(() => {
     setLocalCode(code);
-  }, []);
+  }, [code]);
 
   useEffect(() => {
-    if (!socket || !currentRoom) return;
+    if (!currentRoom) return;
 
-    // Room state received (when joining)
-    socket.on('room-state', ({ code: roomCode, language: roomLanguage, users }) => {
-      console.log('Received room state:', { roomCode: roomCode?.length, roomLanguage, users: users?.length });
-      
-      isRemoteChange.current = true;
-      
-      if (roomCode) {
-        setLocalCode(roomCode);
-        setCode(roomCode);
-      }
-      
-      if (roomLanguage) {
-        setLanguage(roomLanguage);
-      }
-      
-      if (users) {
-        setRoomUsers(users);
-      }
-    });
+    isRemoteChange.current = true;
+    setLocalCode(sharedCode || '');
+    setCode(sharedCode || '');
+  }, [sharedCode, currentRoom, setCode]);
 
-    // User joined
-    socket.on('user-joined', (user) => {
-      console.log('User joined:', user.userName);
-      setRoomUsers(prev => [...prev, user]);
-    });
+  useEffect(() => {
+    if (!currentRoom || !sharedLanguage) return;
 
-    // User left
-    socket.on('user-left', ({ socketId, userName }) => {
-      console.log('User left:', userName);
-      setRoomUsers(prev => prev.filter(u => u.socketId !== socketId));
-    });
-
-    // Code update from others
-    socket.on('code-update', ({ code: newCode }) => {
-      console.log('Received code update');
-      isRemoteChange.current = true;
-      setLocalCode(newCode);
-      setCode(newCode);
-    });
-
-    // Language update
-    socket.on('language-update', ({ language: newLanguage }) => {
-      console.log('Received language update:', newLanguage);
-      setLanguage(newLanguage);
-    });
-
-    return () => {
-      socket.off('room-state');
-      socket.off('user-joined');
-      socket.off('user-left');
-      socket.off('code-update');
-      socket.off('language-update');
-    };
-  }, [socket, currentRoom]);
+    setLanguage(sharedLanguage);
+  }, [sharedLanguage, currentRoom, setLanguage]);
 
   const handleEditorChange = (value) => {
     // If it's a remote change, just update local state

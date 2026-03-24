@@ -28,13 +28,29 @@ export const CollaborationProvider = ({ children }) => {
   const [currentRoom, setCurrentRoom] = useState(null);
   const [roomUsers, setRoomUsers] = useState([]);
   const [isInRoom, setIsInRoom] = useState(false);
+  const [sharedCode, setSharedCode] = useState('');
+  const [sharedLanguage, setSharedLanguage] = useState('javascript');
+
+  const getDisplayName = (activeUser) =>
+    activeUser?.name || activeUser?.user_metadata?.name || activeUser?.email?.split('@')[0] || 'Guest';
+
+  const upsertRoomUser = (incomingUser) => {
+    if (!incomingUser?.socketId) {
+      return;
+    }
+
+    setRoomUsers((previousUsers) => {
+      const filteredUsers = previousUsers.filter((userItem) => userItem.socketId !== incomingUser.socketId);
+      return [...filteredUsers, incomingUser];
+    });
+  };
 
   const emitJoinRoom = (activeSocket, room, activeUser) => {
     if (!activeSocket || !room?.id || !activeUser?.id) {
       return;
     }
 
-    const userName = activeUser.user_metadata?.name || activeUser.email?.split('@')[0] || 'Guest';
+    const userName = getDisplayName(activeUser);
 
     console.log('Joining room:', room.id);
     activeSocket.emit('join-room', {
@@ -79,6 +95,48 @@ export const CollaborationProvider = ({ children }) => {
   }, [user]);
 
   useEffect(() => {
+    if (!socket) {
+      return;
+    }
+
+    const handleRoomState = ({ code: roomCode, language: roomLanguage, users }) => {
+      setSharedCode(roomCode || '');
+      setSharedLanguage(roomLanguage || 'javascript');
+      setRoomUsers(users || []);
+    };
+
+    const handleUserJoined = (joinedUser) => {
+      upsertRoomUser(joinedUser);
+    };
+
+    const handleUserLeft = ({ socketId }) => {
+      setRoomUsers((previousUsers) => previousUsers.filter((userItem) => userItem.socketId !== socketId));
+    };
+
+    const handleCodeUpdate = ({ code: nextCode }) => {
+      setSharedCode(nextCode || '');
+    };
+
+    const handleLanguageUpdate = ({ language: nextLanguage }) => {
+      setSharedLanguage(nextLanguage || 'javascript');
+    };
+
+    socket.on('room-state', handleRoomState);
+    socket.on('user-joined', handleUserJoined);
+    socket.on('user-left', handleUserLeft);
+    socket.on('code-update', handleCodeUpdate);
+    socket.on('language-update', handleLanguageUpdate);
+
+    return () => {
+      socket.off('room-state', handleRoomState);
+      socket.off('user-joined', handleUserJoined);
+      socket.off('user-left', handleUserLeft);
+      socket.off('code-update', handleCodeUpdate);
+      socket.off('language-update', handleLanguageUpdate);
+    };
+  }, [socket]);
+
+  useEffect(() => {
     if (!socket || !connected || !currentRoom || !user) {
       return;
     }
@@ -93,7 +151,16 @@ export const CollaborationProvider = ({ children }) => {
 
     const room = { id: roomId, name: roomName };
     setCurrentRoom(room);
-    setRoomUsers([]);
+    setRoomUsers([
+      {
+        socketId: socket?.id || `local-${user?.id}`,
+        userId: user?.id,
+        userName: getDisplayName(user),
+        color: '#4ECDC4'
+      }
+    ]);
+    setSharedCode('');
+    setSharedLanguage('javascript');
     setIsInRoom(true);
 
     if (socket && connected && user) {
@@ -114,6 +181,8 @@ export const CollaborationProvider = ({ children }) => {
     setCurrentRoom(null);
     setRoomUsers([]);
     setIsInRoom(false);
+    setSharedCode('');
+    setSharedLanguage('javascript');
   };
 
   const sendCodeChange = (code) => {
@@ -150,6 +219,8 @@ export const CollaborationProvider = ({ children }) => {
     currentRoom,
     roomUsers,
     isInRoom,
+    sharedCode,
+    sharedLanguage,
     joinRoom,
     leaveRoom,
     sendCodeChange,
