@@ -9,6 +9,30 @@ const genAI = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY
 });
 
+const getModelText = (response) => {
+  const text = typeof response?.text === 'string' ? response.text.trim() : '';
+  if (text) return text;
+
+  const parts = response?.candidates?.[0]?.content?.parts || [];
+  const fallbackText = parts
+    .map((part) => (typeof part?.text === 'string' ? part.text : ''))
+    .join('\n')
+    .trim();
+
+  if (fallbackText) return fallbackText;
+
+  throw new Error('AI provider returned an empty response');
+};
+
+const getErrorMessage = (error) => {
+  return (
+    error?.message ||
+    error?.statusText ||
+    error?.error?.message ||
+    'Unknown analysis error'
+  );
+};
+
 const serializeAnalysis = (analysisDoc) => {
   const analysis = analysisDoc.toObject ? analysisDoc.toObject() : analysisDoc;
 
@@ -53,7 +77,7 @@ Return ONLY the problem name, nothing else.`;
       }
     });
 
-    return response.text.trim().replace(/['"]/g, '');
+    return getModelText(response).replace(/['"]/g, '');
   } catch (error) {
     console.error('Problem name generation error:', error);
     return 'Code Analysis';
@@ -172,7 +196,7 @@ ${code}
       }
     });
 
-    const result = response.text;
+    const result = getModelText(response);
 
     res.json({
       analysisType,
@@ -184,7 +208,7 @@ ${code}
     console.error('Analysis error:', error);
     res.status(500).json({
       error: 'Code analysis failed',
-      details: error.message
+      details: getErrorMessage(error)
     });
   }
 };
@@ -245,7 +269,7 @@ Be direct and focused. No introductions, conclusions, or fluff.`;
       }
     });
 
-    const fullResult = response.text;
+    const fullResult = getModelText(response);
 
     // Parse sections
     const syntaxMatch = fullResult.match(/##\s*SYNTAX\s*ERRORS\s*([\s\S]*?)(?=##|$)/i);
@@ -292,7 +316,7 @@ Be direct and focused. No introductions, conclusions, or fluff.`;
     console.error('Analyze all error:', error);
     res.status(500).json({
       error: 'Code analysis failed',
-      details: error.message
+      details: getErrorMessage(error)
     });
   }
 };

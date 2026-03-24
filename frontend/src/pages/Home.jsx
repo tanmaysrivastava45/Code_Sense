@@ -11,6 +11,12 @@ import {
 } from 'lucide-react';
 import CollaborationHub from '../components/CollaborationHub';
 
+const getApiErrorMessage = (error, fallbackMessage) =>
+  error?.response?.data?.details ||
+  error?.response?.data?.error ||
+  error?.message ||
+  fallbackMessage;
+
 const normalizeHistoryItem = (item) => ({
   ...item,
   id: item.id || item._id,
@@ -111,7 +117,7 @@ const Home = () => {
       loadHistory();
     } catch (error) {
       console.error('Analysis error:', error);
-      alert('Failed to analyze code. Please try again.');
+      alert(getApiErrorMessage(error, 'Failed to analyze code. Please try again.'));
     } finally {
       setLoading({ ...loading, all: false });
       setSidebarOpen(false);
@@ -154,7 +160,7 @@ const Home = () => {
 
     } catch (error) {
       console.error('Analysis error:', error);
-      alert('Failed to analyze code. Please try again.');
+      alert(getApiErrorMessage(error, 'Failed to analyze code. Please try again.'));
     } finally {
       setLoading({ ...loading, [loadingKey]: false });
       setSidebarOpen(false);

@@ -13,6 +13,12 @@ import {
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 
+const getApiErrorMessage = (error, fallbackMessage) =>
+  error?.response?.data?.details ||
+  error?.response?.data?.error ||
+  error?.message ||
+  fallbackMessage;
+
 const CollaborationRoom = () => {
   const { roomId } = useParams();
   const navigate = useNavigate();
@@ -119,7 +125,7 @@ const CollaborationRoom = () => {
       setResults(response.data.results);
     } catch (error) {
       console.error('Analysis error:', error);
-      alert('Failed to analyze code.');
+      alert(getApiErrorMessage(error, 'Failed to analyze code.'));
     } finally {
       setAnalysisLoading({ ...analysisLoading, all: false });
       setSidebarOpen(false);
@@ -158,7 +164,7 @@ const CollaborationRoom = () => {
 
     } catch (error) {
       console.error('Analysis error:', error);
-      alert('Failed to analyze code.');
+      alert(getApiErrorMessage(error, 'Failed to analyze code.'));
     } finally {
       setAnalysisLoading({ ...analysisLoading, [loadingKey]: false });
       setSidebarOpen(false);
