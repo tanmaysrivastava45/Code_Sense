@@ -32,7 +32,7 @@ const Navbar = () => {
             <h1 className="text-2xl font-bold text-white">CodeSense</h1>
             <p className="text-xs text-cyan-400 flex items-center gap-1">
               <Zap size={12} />
-              by Tanmay Srivastava
+              by Tanmay & Mayank
             </p>
           </div>
         </Link>
