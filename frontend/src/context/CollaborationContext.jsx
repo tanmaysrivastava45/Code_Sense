@@ -38,7 +38,7 @@ export const CollaborationProvider = ({ children }) => {
     if (!incomingUser?.socketId) {
       return;
     }
-
+    
     setRoomUsers((previousUsers) => {
       const filteredUsers = previousUsers.filter((userItem) => userItem.socketId !== incomingUser.socketId);
       return [...filteredUsers, incomingUser];

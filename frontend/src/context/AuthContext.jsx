@@ -11,7 +11,7 @@ export const useAuth = () => {
   return context;
 };
 
-export const AuthProvider = ({ children }) => {
+export const AuthProvider = ({ children })=>{
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [sessionId, setSessionId] = useState(null);
@@ -32,7 +32,7 @@ export const AuthProvider = ({ children }) => {
             setToken(storedToken);
             setSessionId(storedSessionId);
             setUser(response.user);
-          } else {
+          }else{
             // Token is invalid, clear storage
             localStorage.removeItem('jwtToken');
             localStorage.removeItem('sessionId');

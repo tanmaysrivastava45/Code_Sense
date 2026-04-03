@@ -32,7 +32,7 @@ export const initializeSocket = (server) => {
     allowEIO3: true
   });
 
-  io.on('connection', (socket) => {
+  io.on('connection', (socket) =>{
     console.log(`✅ User connected: ${socket.id}`);
 
     // Join room
@@ -59,10 +59,11 @@ export const initializeSocket = (server) => {
           color: getRandomColor()
         });
 
+
         userSockets.set(userId, socket.id);
 
         // Emit current state
-        socket.emit('room-state', {
+        socket.emit('room-state',{
           code: room.code,
           language: room.language,
           users: Array.from(room.users.entries()).map(([id, user]) => ({
