@@ -26,7 +26,7 @@ const CollaborationRoom = () => {
   const { joinRoom, leaveRoom, currentRoom, isInRoom, notifyAnalysisStart } = useCollaboration();
   
   const [code, setCode] = useState('');
-  const [language, setLanguage] = useState('javascript');
+  const [language, setLanguage] = useState('cpp');
   const [roomInfo, setRoomInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState({

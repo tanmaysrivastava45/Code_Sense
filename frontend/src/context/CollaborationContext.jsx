@@ -29,7 +29,7 @@ export const CollaborationProvider = ({ children }) => {
   const [roomUsers, setRoomUsers] = useState([]);
   const [isInRoom, setIsInRoom] = useState(false);
   const [sharedCode, setSharedCode] = useState('');
-  const [sharedLanguage, setSharedLanguage] = useState('javascript');
+  const [sharedLanguage, setSharedLanguage] = useState('cpp');
 
   const getDisplayName = (activeUser) =>
     activeUser?.name || activeUser?.user_metadata?.name || activeUser?.email?.split('@')[0] || 'Guest';
@@ -101,7 +101,7 @@ export const CollaborationProvider = ({ children }) => {
 
     const handleRoomState = ({ code: roomCode, language: roomLanguage, users }) => {
       setSharedCode(roomCode || '');
-      setSharedLanguage(roomLanguage || 'javascript');
+      setSharedLanguage(roomLanguage || 'cpp');
       setRoomUsers(users || []);
     };
 
@@ -118,7 +118,7 @@ export const CollaborationProvider = ({ children }) => {
     };
 
     const handleLanguageUpdate = ({ language: nextLanguage }) => {
-      setSharedLanguage(nextLanguage || 'javascript');
+      setSharedLanguage(nextLanguage || 'cpp');
     };
 
     socket.on('room-state', handleRoomState);
@@ -160,7 +160,7 @@ export const CollaborationProvider = ({ children }) => {
       }
     ]);
     setSharedCode('');
-    setSharedLanguage('javascript');
+    setSharedLanguage('cpp');
     setIsInRoom(true);
 
     if (socket && connected && user) {
